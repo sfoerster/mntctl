@@ -47,12 +47,12 @@
 - [x] Interactive passphrase prompting via rpassword for `mntctl start`
 - [x] Validation: `mntctl enable` requires password_file or password_cmd in config
 - [x] Tests: passphrase handling, unit generation
-- [ ] Docs: encrypted backend guide
+- [x] Docs: encrypted backend guide / examples
 
 ## Phase 6 — Polish
 
 - [ ] Man page generation (clap_mangen or hidden subcommand)
-- [ ] Release workflow: multi-arch binaries, checksums, GitHub Release
+- [x] Release workflow: multi-arch binaries, checksums, GitHub Release
 - [ ] AUR package / deb packaging
 - [x] ~~`mntctl doctor` subcommand: check binary availability, config validity, systemd health~~
 - [ ] `mntctl log <name>`: tail journalctl for a mount's systemd unit

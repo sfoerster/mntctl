@@ -31,7 +31,7 @@ fn main() {
             options,
         } => commands::add::run(
             &name,
-            &backend_type,
+            backend_type.as_deref(),
             &source,
             &target,
             &options,
@@ -43,15 +43,15 @@ fn main() {
             commands::remove::run(&name, force, cli.system, &registry)
         }
 
-        Command::Start { name } => commands::start::run(&name, &registry),
+        Command::Start { name } => commands::start::run(&name, cli.system, &registry),
 
-        Command::Stop { name } => commands::stop::run(&name, &registry),
+        Command::Stop { name } => commands::stop::run(&name, cli.system, &registry),
 
         Command::Enable { name } => commands::enable::run(&name, cli.system, &registry),
 
         Command::Disable { name } => commands::disable::run(&name, cli.system),
 
-        Command::Restart { name } => commands::restart::run(&name, &registry),
+        Command::Restart { name } => commands::restart::run(&name, cli.system, &registry),
 
         Command::Status { name } => commands::status::run(name.as_deref(), cli.system, &registry),
 

@@ -1,4 +1,4 @@
-use crate::backend::{check_binaries, is_mountpoint, Backend, MountContext};
+use crate::backend::{check_binaries, is_mountpoint, run_command_for_scope, Backend, MountContext};
 use crate::config::{BackendType, MountConfig, MountScope};
 use crate::error::MntctlError;
 use crate::systemd::unit::SystemdUnit;
@@ -26,18 +26,20 @@ impl Backend for NfsBackend {
             })?;
         }
 
-        let mut cmd = std::process::Command::new("mount");
-        cmd.arg("-t").arg("nfs");
+        let mut args = vec!["-t".to_string(), "nfs".to_string()];
 
         // Build mount options.
         let opts = build_mount_options(config);
         if !opts.is_empty() {
-            cmd.arg("-o").arg(opts);
+            args.push("-o".to_string());
+            args.push(opts);
         }
 
-        cmd.arg(config.source()).arg(&target);
+        args.push(config.source().to_string());
+        args.push(target.to_string_lossy().to_string());
 
-        let output = cmd.output().context("failed to execute mount")?;
+        let output = run_command_for_scope("mount", &args, Some(config.scope()))
+            .context("failed to execute mount")?;
 
         if output.status.success() {
             Ok(())
@@ -50,21 +52,24 @@ impl Backend for NfsBackend {
     fn unmount(&self, config: &MountConfig) -> Result<()> {
         let target = config.resolved_target()?;
 
-        let output = std::process::Command::new("umount")
-            .arg(&target)
-            .output()
-            .context("failed to execute umount")?;
+        let output = run_command_for_scope(
+            "umount",
+            &[target.to_string_lossy().to_string()],
+            Some(config.scope()),
+        )
+        .context("failed to execute umount")?;
 
         if output.status.success() {
             Ok(())
         } else {
             // Try lazy unmount as fallback.
             log::warn!("umount failed, trying lazy unmount");
-            let output = std::process::Command::new("umount")
-                .arg("-l")
-                .arg(&target)
-                .output()
-                .context("failed to execute umount -l")?;
+            let output = run_command_for_scope(
+                "umount",
+                &["-l".to_string(), target.to_string_lossy().to_string()],
+                Some(config.scope()),
+            )
+            .context("failed to execute umount -l")?;
 
             if output.status.success() {
                 Ok(())

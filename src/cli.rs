@@ -31,7 +31,7 @@ pub enum Command {
 
         /// Backend type (sshfs, rclone, nfs, smb, gocryptfs, cryfs, encfs)
         #[arg(short = 't', long = "type")]
-        backend_type: String,
+        backend_type: Option<String>,
 
         /// Mount source (e.g. user@host:/path)
         #[arg(short = 's', long)]

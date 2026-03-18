@@ -47,7 +47,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/encfs --extpass=pass show encfs-private -f /home/user/.encrypted/private /home/user/mnt/private
+ExecStart=/usr/bin/encfs "--extpass=pass show encfs-private" -f /home/user/.encrypted/private /home/user/mnt/private
 ExecStop=/usr/bin/fusermount -u /home/user/mnt/private
 Restart=on-failure
 RestartSec=5

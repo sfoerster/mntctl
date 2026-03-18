@@ -9,25 +9,36 @@ use std::str::FromStr;
 
 pub fn run(
     name: &str,
-    backend_type: &str,
+    backend_type: Option<&str>,
     source: &str,
     target: &str,
     options: &[String],
     system: bool,
     registry: &BackendRegistry,
 ) -> Result<()> {
-    let bt = BackendType::from_str(backend_type)?;
+    let global_config = config::GlobalConfig::load();
+    let backend_type = backend_type
+        .map(str::to_string)
+        .or(global_config.default_backend)
+        .ok_or_else(|| {
+            MntctlError::ConfigError(
+                "backend type is required (pass -t/--type or set default_backend in config.toml)"
+                    .to_string(),
+            )
+        })?;
+
+    let bt = BackendType::from_str(&backend_type)?;
     let scope = if system {
         MountScope::System
     } else {
         MountScope::User
     };
 
-    // Check if mount already exists.
-    let path = config::mount_config_path(name, scope)?;
-    if path.exists() {
+    // Prevent duplicate names across scopes to keep lookups unambiguous.
+    if config::mount_config_exists_anywhere(name)? {
         return Err(MntctlError::MountAlreadyExists(name.to_string()).into());
     }
+    let path = config::mount_config_path(name, scope)?;
 
     // Parse options.
     let mut opts = BTreeMap::new();

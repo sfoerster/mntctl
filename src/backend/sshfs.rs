@@ -1,7 +1,9 @@
-use crate::backend::{check_binaries, fuse_is_mounted, fuse_unmount, Backend, MountContext};
+use crate::backend::{
+    check_binaries, fuse_is_mounted, fuse_unmount, run_command_for_scope, Backend, MountContext,
+};
 use crate::config::{BackendType, MountConfig};
 use crate::error::MntctlError;
-use crate::systemd::unit::SystemdUnit;
+use crate::systemd::unit::{render_exec_command, SystemdUnit};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 
@@ -26,8 +28,10 @@ impl Backend for SshfsBackend {
             })?;
         }
 
-        let mut cmd = std::process::Command::new("sshfs");
-        cmd.arg(config.source()).arg(&target);
+        let mut args = vec![
+            config.source().to_string(),
+            target.to_string_lossy().to_string(),
+        ];
 
         // Build sshfs options (merge defaults with user config).
         let mut opts: HashMap<String, String> = self
@@ -75,15 +79,18 @@ impl Backend for SshfsBackend {
         }
 
         if !sshfs_opt_parts.is_empty() {
-            cmd.arg("-o").arg(sshfs_opt_parts.join(","));
+            args.push("-o".to_string());
+            args.push(sshfs_opt_parts.join(","));
         }
         if !ssh_opt_parts.is_empty() {
-            cmd.arg("-o").arg(ssh_opt_parts.join(","));
+            args.push("-o".to_string());
+            args.push(ssh_opt_parts.join(","));
         }
 
         // Run in foreground for systemd compatibility (sshfs -f).
         // For transient mounts we do NOT pass -f so it daemonizes.
-        let output = cmd.output().context("failed to execute sshfs")?;
+        let output = run_command_for_scope("sshfs", &args, Some(config.scope()))
+            .context("failed to execute sshfs")?;
 
         if output.status.success() {
             Ok(())
@@ -95,7 +102,7 @@ impl Backend for SshfsBackend {
 
     fn unmount(&self, config: &MountConfig) -> Result<()> {
         let target = config.resolved_target()?;
-        fuse_unmount(&target)
+        fuse_unmount(&target, Some(config.scope()))
     }
 
     fn is_mounted(&self, config: &MountConfig) -> Result<bool> {
@@ -173,8 +180,11 @@ impl Backend for SshfsBackend {
             exec_args.push(ssh_opt_parts.join(","));
         }
 
-        let exec_start = format!("/usr/bin/sshfs {}", exec_args.join(" "));
-        let exec_stop = format!("/usr/bin/fusermount -u {}", target.display());
+        let exec_start = render_exec_command("/usr/bin/sshfs", &exec_args);
+        let exec_stop = render_exec_command(
+            "/usr/bin/fusermount",
+            &["-u".to_string(), target.display().to_string()],
+        );
 
         Ok(SystemdUnit::service(
             &format!("mntctl-{}", config.name()),
@@ -276,5 +286,8 @@ mod tests {
         assert!(
             rendered.contains("sftp_server=/usr/bin/sudo -u user /usr/libexec/openssh/sftp-server")
         );
+        assert!(rendered.contains(
+            "\"cache=yes,reconnect,sftp_server=/usr/bin/sudo -u user /usr/libexec/openssh/sftp-server\""
+        ));
     }
 }

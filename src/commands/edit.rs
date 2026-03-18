@@ -3,7 +3,14 @@ use crate::output::color;
 use anyhow::{Context, Result};
 
 pub fn run(name: &str, system: bool) -> Result<()> {
-    let config = config::find_mount_config(name)?;
+    let config = config::find_mount_config_in_scope(
+        name,
+        if system {
+            Some(MountScope::System)
+        } else {
+            None
+        },
+    )?;
     let scope = if system {
         MountScope::System
     } else {
@@ -15,9 +22,12 @@ pub fn run(name: &str, system: bool) -> Result<()> {
         anyhow::bail!("config file not found: {}", path.display());
     }
 
-    let editor = std::env::var("EDITOR")
-        .or_else(|_| std::env::var("VISUAL"))
-        .unwrap_or_else(|_| "vi".to_string());
+    let global_config = config::GlobalConfig::load();
+    let editor = global_config
+        .editor
+        .or_else(|| std::env::var("EDITOR").ok())
+        .or_else(|| std::env::var("VISUAL").ok())
+        .unwrap_or_else(|| "vi".to_string());
 
     println!(
         "  Opening {} in {}",
@@ -25,7 +35,15 @@ pub fn run(name: &str, system: bool) -> Result<()> {
         editor,
     );
 
-    let status = std::process::Command::new(&editor)
+    let mut cmd =
+        if scope == MountScope::System && std::env::var_os("MNTCTL_SYSTEM_CONFIG_DIR").is_none() {
+            let mut cmd = std::process::Command::new("pkexec");
+            cmd.arg(&editor);
+            cmd
+        } else {
+            std::process::Command::new(&editor)
+        };
+    let status = cmd
         .arg(&path)
         .status()
         .with_context(|| format!("failed to run editor: {editor}"))?;

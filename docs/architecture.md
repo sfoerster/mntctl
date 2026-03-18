@@ -22,7 +22,7 @@ Every mount backend implements the `Backend` trait:
 pub trait Backend: Send + Sync {
     fn name(&self) -> &str;
     fn backend_type(&self) -> BackendType;
-    fn mount(&self, config: &MountConfig) -> Result<()>;
+    fn mount(&self, config: &MountConfig, ctx: &MountContext) -> Result<()>;
     fn unmount(&self, config: &MountConfig) -> Result<()>;
     fn is_mounted(&self, config: &MountConfig) -> Result<bool>;
     fn validate_config(&self, config: &MountConfig) -> Result<()>;
@@ -43,7 +43,7 @@ A simple `HashMap<BackendType, Box<dyn Backend>>` with explicit registration. No
 ## systemd integration
 
 - **FUSE backends** generate `.service` units with `Type=simple` (the FUSE process runs in the foreground via `-f` flag). Cleanup uses `fusermount -u`.
-- **Kernel backends** (NFS, SMB) generate `.mount` + `.automount` units with path-encoded filenames.
+- **Kernel backends** (NFS, SMB) generate `.mount` units with path-encoded filenames.
 - **User scope** units go to `~/.config/systemd/user/`
 - **System scope** units go to `/etc/systemd/system/` (written via pkexec)
 
@@ -59,8 +59,8 @@ Five of seven backends use FUSE. Common logic is extracted into `backend/mod.rs`
 ## Privilege model
 
 - Default operations are user-level (no root needed for FUSE)
-- `--system` flag wraps systemctl and file operations with pkexec
-- NFS/SMB backends auto-promote to system scope during validation
+- `--system` flag targets system-scope configs and wraps system file/unit/command operations with pkexec
+- NFS/SMB backends require system scope and warn if configured as user mounts
 - A polkit policy file (`polkit/org.mntctl.policy`) authorizes pkexec
 
 ## Error handling

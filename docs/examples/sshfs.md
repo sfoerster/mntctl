@@ -62,6 +62,8 @@ mntctl add bastion -t sshfs \
   -s admin@bastion.example.com:/opt/app \
   -T ~/mnt/bastion \
   -o "sftp_server=/usr/bin/sudo -u appuser /usr/libexec/openssh/sftp-server"
+
+The generated unit will quote that option as a single `ExecStart=` argument so systemd does not split the embedded spaces.
 ```
 
 ## Full lifecycle

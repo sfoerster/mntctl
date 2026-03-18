@@ -11,7 +11,7 @@ Modular remote & encrypted mount manager with systemd integration.
 - **systemd integration** — generate, install, enable/disable persistent mount units
 - **Backend extensibility** — adding a new backend is one file + one registration line
 - **No runtime dependencies** — single static binary, no async runtime
-- **Privilege model** — FUSE backends run unprivileged; `--system` flag uses pkexec for system-level mounts
+- **Privilege model** — FUSE backends run unprivileged by default; `--system` targets system-scope configs and uses pkexec for system-level file/unit/command operations
 
 ## Installation
 
@@ -68,7 +68,7 @@ mntctl remove bastion
 ## CLI reference
 
 ```
-mntctl add <name> -t <backend> -s <source> -T <target> [-o key=val,...]
+mntctl add <name> [-t <backend>] -s <source> -T <target> [-o key=val,...]
 mntctl remove <name> [--force]
 mntctl start <name>          # mount now (transient)
 mntctl stop <name>           # unmount now
@@ -114,9 +114,9 @@ See [docs/configuration.md](docs/configuration.md) for full details.
 | rclone    | FUSE   | fusermount -u  | .service (Type=notify)   | user          | implemented |
 | nfs       | kernel | umount         | .mount                   | system        | implemented |
 | smb       | kernel | umount         | .mount                   | system        | implemented |
-| gocryptfs | FUSE   | fusermount -u  | .service + passfile      | user          | planned     |
-| cryfs     | FUSE   | fusermount -u  | .service + passfile      | user          | planned     |
-| encfs     | FUSE   | fusermount -u  | .service + extpass       | user          | planned     |
+| gocryptfs | FUSE   | fusermount -u  | .service + passfile/extpass | user       | implemented |
+| cryfs     | FUSE   | fusermount -u  | .service + shell wrapper | user          | implemented |
+| encfs     | FUSE   | fusermount -u  | .service + extpass       | user          | implemented |
 
 See [docs/backends.md](docs/backends.md) for backend-specific details.
 

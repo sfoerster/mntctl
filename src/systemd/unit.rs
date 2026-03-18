@@ -117,6 +117,40 @@ impl SystemdUnit {
     }
 }
 
+/// Render an ExecStart/ExecStop command with conservative quoting for systemd parsing.
+pub fn render_exec_command(program: &str, args: &[String]) -> String {
+    std::iter::once(program)
+        .chain(args.iter().map(String::as_str))
+        .map(quote_exec_arg)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn quote_exec_arg(arg: &str) -> String {
+    if !needs_exec_quoting(arg) {
+        return arg.to_string();
+    }
+
+    let mut escaped = String::new();
+    for ch in arg.chars() {
+        match ch {
+            '\\' => escaped.push_str("\\\\"),
+            '"' => escaped.push_str("\\\""),
+            '\n' => escaped.push_str("\\n"),
+            '\t' => escaped.push_str("\\t"),
+            _ => escaped.push(ch),
+        }
+    }
+    format!("\"{escaped}\"")
+}
+
+fn needs_exec_quoting(arg: &str) -> bool {
+    arg.is_empty()
+        || arg
+            .chars()
+            .any(|ch| ch.is_whitespace() || matches!(ch, '"' | '\'' | '\\' | ';' | '|'))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,5 +203,22 @@ mod tests {
 
         let mount = SystemdUnit::mount_unit("test", "desc", "what", "where", "nfs", "");
         assert!(mount.name.ends_with(".mount"));
+    }
+
+    #[test]
+    fn render_exec_command_quotes_arguments_with_spaces() {
+        let rendered = render_exec_command(
+            "/usr/bin/encfs",
+            &[
+                "--extpass=pass show vault".to_string(),
+                "/cipher".to_string(),
+                "/plain".to_string(),
+            ],
+        );
+
+        assert_eq!(
+            rendered,
+            "/usr/bin/encfs \"--extpass=pass show vault\" /cipher /plain"
+        );
     }
 }

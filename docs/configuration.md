@@ -105,7 +105,7 @@ Optional file at `~/.config/mntctl/config.toml`:
 
 ```toml
 default_backend = "sshfs"   # default for `mntctl add` when -t is omitted
-editor = "nvim"             # override $EDITOR for `mntctl edit`
+editor = "nvim"             # preferred editor for `mntctl edit`
 ```
 
 ## Editing configs

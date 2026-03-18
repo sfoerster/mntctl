@@ -6,13 +6,20 @@ use anyhow::Result;
 
 pub fn run(name: Option<&str>, system: bool, registry: &BackendRegistry) -> Result<()> {
     match name {
-        Some(name) => show_single(name, registry),
+        Some(name) => show_single(name, system, registry),
         None => show_overview(system, registry),
     }
 }
 
-fn show_single(name: &str, registry: &BackendRegistry) -> Result<()> {
-    let config = config::find_mount_config(name)?;
+fn show_single(name: &str, system: bool, registry: &BackendRegistry) -> Result<()> {
+    let config = config::find_mount_config_in_scope(
+        name,
+        if system {
+            Some(config::MountScope::System)
+        } else {
+            None
+        },
+    )?;
 
     println!(
         "{}",

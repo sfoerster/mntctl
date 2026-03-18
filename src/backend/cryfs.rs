@@ -1,10 +1,10 @@
 use crate::backend::{
-    check_binaries, fuse_is_mounted, fuse_unmount, Backend, MountContext,
-    ENCRYPTED_RESERVED_OPTIONS,
+    build_scoped_command, check_binaries, fuse_is_mounted, fuse_unmount, shell_quote, Backend,
+    MountContext, ENCRYPTED_RESERVED_OPTIONS,
 };
 use crate::config::{BackendType, MountConfig};
 use crate::error::MntctlError;
-use crate::systemd::unit::SystemdUnit;
+use crate::systemd::unit::{render_exec_command, SystemdUnit};
 use anyhow::{Context, Result};
 use std::io::Write;
 use std::process::Stdio;
@@ -30,9 +30,8 @@ impl Backend for CryfsBackend {
             })?;
         }
 
-        let mut cmd = std::process::Command::new("cryfs");
-
         // Disable interactive prompts.
+        let mut cmd = build_scoped_command("cryfs", &[], Some(config.scope()));
         cmd.env("CRYFS_FRONTEND", "noninteractive");
 
         if let Some(password_file) = config.option_str("password_file") {
@@ -125,7 +124,7 @@ impl Backend for CryfsBackend {
 
     fn unmount(&self, config: &MountConfig) -> Result<()> {
         let target = config.resolved_target()?;
-        fuse_unmount(&target)
+        fuse_unmount(&target, Some(config.scope()))
     }
 
     fn is_mounted(&self, config: &MountConfig) -> Result<bool> {
@@ -149,11 +148,12 @@ impl Backend for CryfsBackend {
 
         let mut exec_args = Vec::new();
 
+        let password_cmd = config.option_str("password_cmd");
+
         if let Some(password_file) = config.option_str("password_file") {
             exec_args.push("--passphrase-file".to_string());
             exec_args.push(password_file);
         }
-        // password_cmd handled via Environment + stdin in the unit
 
         exec_args.push("-f".to_string()); // foreground for systemd
 
@@ -175,8 +175,23 @@ impl Backend for CryfsBackend {
         exec_args.push(config.source().to_string());
         exec_args.push(target.to_string_lossy().to_string());
 
-        let exec_start = format!("/usr/bin/cryfs {}", exec_args.join(" "));
-        let exec_stop = format!("/usr/bin/fusermount -u {}", target.display());
+        let exec_start = if let Some(password_cmd) = password_cmd {
+            let mut shell_args = vec!["/usr/bin/cryfs".to_string()];
+            shell_args.extend(exec_args);
+            let cryfs_cmd = shell_args
+                .iter()
+                .map(|arg| shell_quote(arg))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let script = format!("{password_cmd} | {cryfs_cmd}");
+            render_exec_command("/bin/sh", &["-lc".to_string(), script])
+        } else {
+            render_exec_command("/usr/bin/cryfs", &exec_args)
+        };
+        let exec_stop = render_exec_command(
+            "/usr/bin/fusermount",
+            &["-u".to_string(), target.display().to_string()],
+        );
 
         let mut unit = SystemdUnit::service(
             &format!("mntctl-{}", config.name()),
@@ -284,6 +299,22 @@ mod tests {
         let config = sample_config();
         let unit = backend.generate_systemd_unit(&config).unwrap();
         assert!(unit.name.ends_with(".service"));
+    }
+
+    #[test]
+    fn generate_unit_with_password_cmd() {
+        let backend = CryfsBackend;
+        let mut config = sample_config();
+        config.options.clear();
+        config.options.insert(
+            "password_cmd".to_string(),
+            toml::Value::String("pass show cryfs-vault".to_string()),
+        );
+
+        let unit = backend.generate_systemd_unit(&config).unwrap();
+        let rendered = unit.render();
+        assert!(rendered.contains("/bin/sh -lc"));
+        assert!(rendered.contains("pass show cryfs-vault | '/usr/bin/cryfs'"));
     }
 
     #[test]

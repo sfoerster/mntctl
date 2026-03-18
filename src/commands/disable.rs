@@ -5,7 +5,14 @@ use crate::systemd::SystemdManager;
 use anyhow::Result;
 
 pub fn run(name: &str, system: bool) -> Result<()> {
-    let config = config::find_mount_config(name)?;
+    let config = config::find_mount_config_in_scope(
+        name,
+        if system {
+            Some(MountScope::System)
+        } else {
+            None
+        },
+    )?;
     let scope = if system {
         MountScope::System
     } else {

@@ -191,7 +191,7 @@ Encrypted FUSE filesystem using CryFS.
 - `mntctl start`: interactive passphrase prompt (piped via stdin)
 - `mntctl enable`: requires `password_file` or `password_cmd` in config
 - `password_file`: passed as `--passphrase-file <path>`
-- `password_cmd`: executed via shell, output piped to cryfs stdin
+- `password_cmd`: wrapped via `/bin/sh -lc '<cmd> | /usr/bin/cryfs ...'` in the generated unit
 
 **Example config**:
 
@@ -224,7 +224,7 @@ Encrypted FUSE filesystem using EncFS.
 - `mntctl start`: interactive passphrase prompt (piped via `--stdinpass`)
 - `mntctl enable`: requires `password_file` or `password_cmd` in config
 - `password_file`: passed as `--extpass=cat <path>`
-- `password_cmd`: passed as `--extpass=<command>`
+- `password_cmd`: passed as `--extpass=<command>` as a single quoted argument in the generated unit
 
 **Example config**:
 

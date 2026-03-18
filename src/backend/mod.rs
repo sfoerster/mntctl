@@ -10,6 +10,7 @@ use crate::config::{BackendType, MountConfig};
 use crate::systemd::unit::SystemdUnit;
 use anyhow::Result;
 use std::collections::HashMap;
+use std::process::{Command, Output};
 
 /// Options reserved by encrypted backends (excluded from generic pass-through).
 pub const ENCRYPTED_RESERVED_OPTIONS: &[&str] = &["password_file", "password_cmd"];
@@ -115,11 +116,15 @@ pub fn fuse_is_mounted(target: &std::path::Path, fuse_type: &str) -> Result<bool
 }
 
 /// Unmount a FUSE filesystem using fusermount, with lazy fallback.
-pub fn fuse_unmount(target: &std::path::Path) -> Result<()> {
-    let output = std::process::Command::new("fusermount")
-        .arg("-u")
-        .arg(target)
-        .output()?;
+pub fn fuse_unmount(
+    target: &std::path::Path,
+    scope: Option<crate::config::MountScope>,
+) -> Result<()> {
+    let output = run_command_for_scope(
+        "fusermount",
+        &["-u".to_string(), target.to_string_lossy().to_string()],
+        scope,
+    )?;
 
     if output.status.success() {
         return Ok(());
@@ -127,10 +132,11 @@ pub fn fuse_unmount(target: &std::path::Path) -> Result<()> {
 
     // Lazy unmount fallback.
     log::warn!("fusermount -u failed, trying lazy unmount");
-    let output = std::process::Command::new("fusermount")
-        .arg("-uz")
-        .arg(target)
-        .output()?;
+    let output = run_command_for_scope(
+        "fusermount",
+        &["-uz".to_string(), target.to_string_lossy().to_string()],
+        scope,
+    )?;
 
     if output.status.success() {
         Ok(())
@@ -141,6 +147,41 @@ pub fn fuse_unmount(target: &std::path::Path) -> Result<()> {
             stderr.trim()
         ))
         .into())
+    }
+}
+
+/// Run a command, optionally via pkexec for system-scope operations.
+pub fn run_command_for_scope(
+    program: &str,
+    args: &[String],
+    scope: Option<crate::config::MountScope>,
+) -> Result<Output> {
+    let mut cmd = build_scoped_command(program, args, scope);
+    Ok(cmd.output()?)
+}
+
+/// Build a command for the given scope.
+pub fn build_scoped_command(
+    program: &str,
+    args: &[String],
+    scope: Option<crate::config::MountScope>,
+) -> Command {
+    match scope {
+        Some(crate::config::MountScope::System) => {
+            let mut cmd = Command::new("pkexec");
+            cmd.arg(program);
+            for arg in args {
+                cmd.arg(arg);
+            }
+            cmd
+        }
+        _ => {
+            let mut cmd = Command::new(program);
+            for arg in args {
+                cmd.arg(arg);
+            }
+            cmd
+        }
     }
 }
 
@@ -219,6 +260,20 @@ pub fn build_mount_context(backend: &dyn Backend, config: &MountConfig) -> Resul
     } else {
         Ok(MountContext::default())
     }
+}
+
+/// Quote a command argument for `/bin/sh -lc`.
+pub fn shell_quote(arg: &str) -> String {
+    let mut quoted = String::from("'");
+    for ch in arg.chars() {
+        if ch == '\'' {
+            quoted.push_str("'\"'\"'");
+        } else {
+            quoted.push(ch);
+        }
+    }
+    quoted.push('\'');
+    quoted
 }
 
 #[cfg(test)]

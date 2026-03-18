@@ -1,10 +1,10 @@
 use crate::backend::{
-    check_binaries, fuse_is_mounted, fuse_unmount, Backend, MountContext,
+    build_scoped_command, check_binaries, fuse_is_mounted, fuse_unmount, Backend, MountContext,
     ENCRYPTED_RESERVED_OPTIONS,
 };
 use crate::config::{BackendType, MountConfig};
 use crate::error::MntctlError;
-use crate::systemd::unit::SystemdUnit;
+use crate::systemd::unit::{render_exec_command, SystemdUnit};
 use anyhow::{Context, Result};
 use std::io::Write;
 use std::process::Stdio;
@@ -30,15 +30,17 @@ impl Backend for GocryptfsBackend {
             })?;
         }
 
-        let mut cmd = std::process::Command::new("gocryptfs");
+        let mut args = Vec::new();
 
         if let Some(password_file) = config.option_str("password_file") {
-            cmd.arg("-passfile").arg(password_file);
+            args.push("-passfile".to_string());
+            args.push(password_file);
         } else if let Some(password_cmd) = config.option_str("password_cmd") {
-            cmd.arg("-extpass").arg(password_cmd);
+            args.push("-extpass".to_string());
+            args.push(password_cmd);
         } else {
             // Read passphrase from stdin.
-            cmd.arg("-stdin");
+            args.push("-stdin".to_string());
         }
 
         // Pass through non-reserved options.
@@ -59,13 +61,17 @@ impl Backend for GocryptfsBackend {
                 other => other.to_string(),
             };
             if val.is_empty() {
-                cmd.arg(format!("-{k}"));
+                args.push(format!("-{k}"));
             } else {
-                cmd.arg(format!("-{k}")).arg(val);
+                args.push(format!("-{k}"));
+                args.push(val);
             }
         }
 
-        cmd.arg(config.source()).arg(&target);
+        args.push(config.source().to_string());
+        args.push(target.to_string_lossy().to_string());
+
+        let mut cmd = build_scoped_command("gocryptfs", &args, Some(config.scope()));
 
         if ctx.passphrase.is_some() {
             cmd.stdin(Stdio::piped());
@@ -92,7 +98,7 @@ impl Backend for GocryptfsBackend {
 
     fn unmount(&self, config: &MountConfig) -> Result<()> {
         let target = config.resolved_target()?;
-        fuse_unmount(&target)
+        fuse_unmount(&target, Some(config.scope()))
     }
 
     fn is_mounted(&self, config: &MountConfig) -> Result<bool> {
@@ -153,8 +159,11 @@ impl Backend for GocryptfsBackend {
         exec_args.push(config.source().to_string());
         exec_args.push(target.to_string_lossy().to_string());
 
-        let exec_start = format!("/usr/bin/gocryptfs {}", exec_args.join(" "));
-        let exec_stop = format!("/usr/bin/fusermount -u {}", target.display());
+        let exec_start = render_exec_command("/usr/bin/gocryptfs", &exec_args);
+        let exec_stop = render_exec_command(
+            "/usr/bin/fusermount",
+            &["-u".to_string(), target.display().to_string()],
+        );
 
         Ok(SystemdUnit::service(
             &format!("mntctl-{}", config.name()),

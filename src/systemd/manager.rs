@@ -2,6 +2,7 @@ use crate::config::MountScope;
 use crate::error::MntctlError;
 use crate::systemd::unit::SystemdUnit;
 use anyhow::{Context, Result};
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -18,7 +19,9 @@ impl SystemdManager {
                 let config = dirs::config_dir().context("could not determine config directory")?;
                 Ok(config.join("systemd").join("user"))
             }
-            MountScope::System => Ok(PathBuf::from("/etc/systemd/system")),
+            MountScope::System => Ok(std::env::var_os("MNTCTL_SYSTEMD_SYSTEM_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("/etc/systemd/system"))),
         }
     }
 
@@ -30,33 +33,50 @@ impl SystemdManager {
     /// Install a unit file to disk.
     pub fn install_unit(unit: &SystemdUnit, scope: MountScope) -> Result<PathBuf> {
         let dir = Self::unit_dir(scope)?;
-        std::fs::create_dir_all(&dir)
-            .with_context(|| format!("failed to create unit directory: {}", dir.display()))?;
-
         let path = dir.join(&unit.name);
         let content = unit.render();
 
-        if scope == MountScope::System {
-            // Write via pkexec for system scope.
-            let status = Command::new("pkexec")
+        if scope == MountScope::System && std::env::var_os("MNTCTL_SYSTEMD_SYSTEM_DIR").is_none() {
+            let mkdir_status = Command::new("pkexec")
+                .arg("mkdir")
+                .arg("-p")
+                .arg(&dir)
+                .status()
+                .context("failed to run pkexec mkdir for system unit directory")?;
+            if !mkdir_status.success() {
+                return Err(MntctlError::SystemdError(format!(
+                    "failed to create system unit directory: {}",
+                    dir.display()
+                ))
+                .into());
+            }
+
+            let mut child = Command::new("pkexec")
                 .arg("tee")
                 .arg(&path)
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::null())
                 .spawn()
-                .context("failed to run pkexec")?
-                .wait_with_output();
+                .context("failed to run pkexec tee for system unit")?;
 
-            match status {
-                Ok(output) if output.status.success() => {}
-                _ => {
-                    return Err(MntctlError::SystemdError(
-                        "failed to install system unit via pkexec".to_string(),
-                    )
-                    .into());
-                }
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin
+                    .write_all(content.as_bytes())
+                    .context("failed to write system unit contents")?;
+            }
+
+            let output = child
+                .wait_with_output()
+                .context("failed to finish writing system unit")?;
+            if !output.status.success() {
+                return Err(MntctlError::SystemdError(
+                    "failed to install system unit via pkexec".to_string(),
+                )
+                .into());
             }
         } else {
+            std::fs::create_dir_all(&dir)
+                .with_context(|| format!("failed to create unit directory: {}", dir.display()))?;
             std::fs::write(&path, content)
                 .with_context(|| format!("failed to write unit file: {}", path.display()))?;
         }
@@ -149,6 +169,14 @@ impl SystemdManager {
 
     /// Build the base systemctl command with scope flags.
     fn systemctl_cmd(scope: MountScope) -> Command {
+        if let Some(systemctl_bin) = std::env::var_os("MNTCTL_SYSTEMCTL_BIN") {
+            let mut cmd = Command::new(systemctl_bin);
+            if scope == MountScope::User {
+                cmd.arg("--user");
+            }
+            return cmd;
+        }
+
         match scope {
             MountScope::User => {
                 let mut cmd = Command::new("systemctl");
