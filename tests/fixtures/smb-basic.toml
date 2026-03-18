@@ -1,0 +1,11 @@
+[mount]
+name = "test-smb"
+type = "smb"
+source = "//fileserver/share"
+target = "/mnt/smb-share"
+scope = "system"
+
+[options]
+credentials = "/etc/samba/creds"
+uid = 1000
+gid = 1000

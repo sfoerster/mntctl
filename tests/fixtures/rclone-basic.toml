@@ -1,0 +1,10 @@
+[mount]
+name = "test-rclone"
+type = "rclone"
+source = "gdrive:documents"
+target = "~/mnt/gdrive"
+scope = "user"
+
+[options]
+vfs-cache-mode = "full"
+allow-other = true

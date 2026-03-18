@@ -1,4 +1,4 @@
-use crate::backend::BackendRegistry;
+use crate::backend::{self, BackendRegistry};
 use crate::config::{self, MountScope};
 use crate::error::MntctlError;
 use crate::output::color;
@@ -30,7 +30,7 @@ pub fn run(name: &str, force: bool, system: bool, registry: &BackendRegistry) ->
     }
 
     // Disable and remove systemd unit if it exists.
-    let unit_name = format!("mntctl-{}.service", name);
+    let unit_name = backend::unit_name_for_config(&config)?;
     if SystemdManager::is_enabled(&unit_name, scope).unwrap_or(false) {
         SystemdManager::disable(&unit_name, scope)?;
         SystemdManager::daemon_reload(scope)?;

@@ -99,9 +99,9 @@ See [docs/configuration.md](docs/configuration.md) for full details.
 | Backend   | Type   | Unmount        | systemd Unit             | Default Scope | Status      |
 |-----------|--------|----------------|--------------------------|---------------|-------------|
 | sshfs     | FUSE   | fusermount -u  | .service (Type=simple)   | user          | implemented |
-| rclone    | FUSE   | fusermount -u  | .service (Type=notify)   | user          | planned     |
-| nfs       | kernel | umount         | .mount + .automount      | system        | planned     |
-| smb       | kernel | umount         | .mount + .automount      | system        | planned     |
+| rclone    | FUSE   | fusermount -u  | .service (Type=notify)   | user          | implemented |
+| nfs       | kernel | umount         | .mount                   | system        | implemented |
+| smb       | kernel | umount         | .mount                   | system        | implemented |
 | gocryptfs | FUSE   | fusermount -u  | .service + passfile      | user          | planned     |
 | cryfs     | FUSE   | fusermount -u  | .service + passfile      | user          | planned     |
 | encfs     | FUSE   | fusermount -u  | .service + extpass       | user          | planned     |

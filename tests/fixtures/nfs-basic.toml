@@ -1,0 +1,11 @@
+[mount]
+name = "test-nfs"
+type = "nfs"
+source = "fileserver:/export/data"
+target = "/mnt/nfs-data"
+scope = "system"
+
+[options]
+rw = true
+soft = true
+timeo = 30

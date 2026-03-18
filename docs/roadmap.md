@@ -28,15 +28,16 @@
 - Polkit policy file
 - Tests: CLI integration tests for all commands
 
-## Phase 4 — More Backends
+## Phase 4 — More Backends (complete)
 
-- [ ] rclone backend (FUSE, Type=notify, sd_notify support)
-- [ ] nfs backend (kernel, .mount + .automount units, auto-system-scope promotion)
-- [ ] smb backend (kernel, credentials file support)
-- [ ] Extract fuse_service_unit shared helper for common FUSE service unit template
-- [ ] path_to_systemd_unit_name() for kernel mount unit naming (systemd-escape style)
-- [ ] Tests: unit generation per backend, path encoding
-- [ ] Docs: example configs per backend
+- rclone backend (FUSE, Type=notify)
+- nfs backend (kernel, .mount units, system-scope warning)
+- smb backend (kernel, credentials file support)
+- path_to_systemd_unit_name() for kernel mount unit naming (systemd-escape style)
+- unit_name_for_config() helper — FUSE uses .service, kernel uses .mount
+- Fixed all commands to use dynamic unit name resolution
+- Tests: unit generation per backend, path encoding, validation
+- Docs: example configs per backend
 
 ## Phase 5 — Encrypted Backends
 

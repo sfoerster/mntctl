@@ -1,4 +1,4 @@
-use crate::backend::BackendRegistry;
+use crate::backend::{self, BackendRegistry};
 use crate::config::{self, MountConfig};
 use crate::output::color;
 use crate::systemd::SystemdManager;
@@ -25,7 +25,7 @@ fn show_single(name: &str, registry: &BackendRegistry) -> Result<()> {
 
     // Mount status.
     let mount_status = match registry.get(config.backend_type()) {
-        Some(backend) => match backend.is_mounted(&config) {
+        Some(b) => match b.is_mounted(&config) {
             Ok(true) => color::status_style("mounted"),
             Ok(false) => color::status_style("unmounted"),
             Err(e) => color::status_style(&format!("error: {e}")),
@@ -35,7 +35,7 @@ fn show_single(name: &str, registry: &BackendRegistry) -> Result<()> {
     println!("  Status: {}", mount_status);
 
     // systemd unit status.
-    let unit_name = format!("mntctl-{}.service", name);
+    let unit_name = backend::unit_name_for_config(&config)?;
     let enabled = SystemdManager::is_enabled(&unit_name, config.scope()).unwrap_or(false);
     let active = SystemdManager::is_active(&unit_name, config.scope()).unwrap_or(false);
     println!(
@@ -90,7 +90,7 @@ fn show_overview(system: bool, registry: &BackendRegistry) -> Result<()> {
 
 fn print_summary_line(config: &MountConfig, registry: &BackendRegistry) {
     let mounted = match registry.get(config.backend_type()) {
-        Some(backend) => match backend.is_mounted(config) {
+        Some(b) => match b.is_mounted(config) {
             Ok(true) => color::status_style("mounted"),
             Ok(false) => color::status_style("unmounted"),
             Err(_) => color::status_style("error"),

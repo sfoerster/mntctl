@@ -1,4 +1,4 @@
-use crate::backend::BackendRegistry;
+use crate::backend::{self, BackendRegistry};
 use crate::config::MountConfig;
 use crate::output::color;
 use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, ContentArrangement, Table};
@@ -25,7 +25,7 @@ pub fn render_mount_table(configs: &[MountConfig], registry: &BackendRegistry) -
 
     for config in configs {
         let mounted = match registry.get(config.backend_type()) {
-            Some(backend) => match backend.is_mounted(config) {
+            Some(b) => match b.is_mounted(config) {
                 Ok(true) => color::status_style("mounted"),
                 Ok(false) => color::status_style("unmounted"),
                 Err(_) => color::status_style("error"),
@@ -33,7 +33,8 @@ pub fn render_mount_table(configs: &[MountConfig], registry: &BackendRegistry) -
             None => "unknown".to_string(),
         };
 
-        let unit_name = format!("mntctl-{}.service", config.name());
+        let unit_name = backend::unit_name_for_config(config)
+            .unwrap_or_else(|_| format!("mntctl-{}.service", config.name()));
         let enabled = match crate::systemd::SystemdManager::is_enabled(&unit_name, config.scope()) {
             Ok(true) => color::status_style("enabled"),
             Ok(false) => color::status_style("disabled"),

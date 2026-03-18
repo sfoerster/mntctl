@@ -48,33 +48,99 @@ Options matching known SSH config keys (`ServerAliveInterval`, `ServerAliveCount
 
 ---
 
-## rclone (planned)
+## rclone (implemented)
 
-Mounts rclone remotes via FUSE.
+Mounts rclone remotes via FUSE. Supports any rclone remote (Google Drive, S3, SFTP, etc.).
+
+**Required binaries**: `rclone`, `fusermount`
+
+**Source format**: `remote:path` (as configured in `rclone config`)
 
 **systemd unit**: `.service` with `Type=notify` (rclone supports sd_notify)
 
+**Example config**:
+
+```toml
+[mount]
+name = "gdrive"
+type = "rclone"
+source = "gdrive:documents"
+target = "~/mnt/gdrive"
+
+[options]
+vfs-cache-mode = "full"
+allow-other = true
+```
+
+Options are passed as `--key=value` flags to `rclone mount`.
+
+See [examples/rclone.md](examples/rclone.md) for more.
+
 ---
 
-## nfs (planned)
+## nfs (implemented)
 
 Kernel NFS mounts.
 
-**systemd unit**: `.mount` + `.automount` with path-encoded unit names
+**Required binaries**: `mount.nfs`
 
-**Default scope**: system (auto-promoted during validation)
+**Source format**: `host:/export/path`
+
+**systemd unit**: `.mount` with path-encoded unit names (e.g., `/mnt/nfs-data` becomes `mnt-nfs\x2ddata.mount`)
+
+**Default scope**: system (kernel mounts require root; warns if user scope is used)
+
+**Example config**:
+
+```toml
+[mount]
+name = "nas-data"
+type = "nfs"
+source = "fileserver:/export/data"
+target = "/mnt/nas-data"
+scope = "system"
+
+[options]
+rw = true
+soft = true
+timeo = 30
+```
+
+See [examples/nfs.md](examples/nfs.md) for more.
 
 ---
 
-## smb (planned)
+## smb (implemented)
 
 Kernel CIFS/SMB mounts.
 
-**systemd unit**: `.mount` + `.automount` with path-encoded unit names
+**Required binaries**: `mount.cifs`
 
-**Default scope**: system (auto-promoted during validation)
+**Source format**: `//server/share`
 
-Supports `credentials_file` option for storing username/password separately.
+**systemd unit**: `.mount` with path-encoded unit names
+
+**Default scope**: system (kernel mounts require root; warns if user scope is used)
+
+Supports `credentials` option pointing to a credentials file with 0600 permissions.
+
+**Example config**:
+
+```toml
+[mount]
+name = "office-share"
+type = "smb"
+source = "//fileserver/share"
+target = "/mnt/office"
+scope = "system"
+
+[options]
+credentials = "/etc/samba/creds"
+uid = 1000
+gid = 1000
+```
+
+See [examples/smb.md](examples/smb.md) for more.
 
 ---
 

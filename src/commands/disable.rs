@@ -1,3 +1,4 @@
+use crate::backend;
 use crate::config::{self, MountScope};
 use crate::output::color;
 use crate::systemd::SystemdManager;
@@ -11,7 +12,7 @@ pub fn run(name: &str, system: bool) -> Result<()> {
         config.scope()
     };
 
-    let unit_name = format!("mntctl-{}.service", name);
+    let unit_name = backend::unit_name_for_config(&config)?;
 
     SystemdManager::disable(&unit_name, scope)?;
     SystemdManager::daemon_reload(scope)?;

@@ -62,6 +62,43 @@ The `[options]` section is a flat key-value map. Each backend validates and inte
 | `StrictHostKeyChecking` | string  | SSH host key policy                    |
 | `sftp_server`           | string  | Remote sftp-server command (passed via `-s`) |
 
+### rclone options
+
+Options are passed as `--key=value` flags to `rclone mount`.
+
+| Option           | Type   | Description                        |
+|------------------|--------|------------------------------------|
+| `vfs-cache-mode` | string | VFS caching mode (`off`/`minimal`/`writes`/`full`) |
+| `allow-other`    | bool   | Allow other users to access the mount |
+| `dir-cache-time` | string | Cache directory listings duration   |
+| `buffer-size`    | string | In-memory buffer size per file      |
+
+### nfs options
+
+Options are passed as `-o key=value` to `mount -t nfs`.
+
+| Option    | Type    | Description                   |
+|-----------|---------|-------------------------------|
+| `rw`      | bool    | Read-write mount              |
+| `soft`    | bool    | Soft mount (return errors on timeout) |
+| `hard`    | bool    | Hard mount (retry indefinitely) |
+| `timeo`   | integer | Timeout in deciseconds        |
+| `retrans` | integer | Number of retransmissions     |
+| `nfsvers` | string  | NFS version (e.g., `4.2`)     |
+
+### smb options
+
+Options are passed as `-o key=value` to `mount -t cifs`.
+
+| Option        | Type    | Description                          |
+|---------------|---------|--------------------------------------|
+| `credentials` | string  | Path to credentials file (0600 perms) |
+| `uid`         | integer | Map files to this UID                |
+| `gid`         | integer | Map files to this GID                |
+| `file_mode`   | string  | File permission mode (e.g., `0644`)  |
+| `dir_mode`    | string  | Directory permission mode            |
+| `guest`       | bool    | Guest access (no credentials)        |
+
 ## Global config
 
 Optional file at `~/.config/mntctl/config.toml`:
