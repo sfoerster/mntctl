@@ -18,7 +18,19 @@ Modular remote & encrypted mount manager with systemd integration.
 ### From source
 
 ```bash
+make && sudo make install
+```
+
+Or via Cargo:
+
+```bash
 cargo install --path .
+```
+
+To uninstall:
+
+```bash
+sudo make uninstall
 ```
 
 ### From release binaries
