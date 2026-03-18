@@ -120,6 +120,14 @@ mntctl completion zsh > ~/.local/share/zsh/site-functions/_mntctl
 mntctl completion fish > ~/.config/fish/completions/mntctl.fish
 ```
 
+## Development
+
+```bash
+cargo fmt --check && cargo clippy -- -D warnings && cargo test
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md) for design details.
