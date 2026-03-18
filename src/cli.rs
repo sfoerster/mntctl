@@ -6,7 +6,8 @@ use clap_complete::Shell;
     name = "mntctl",
     about = "Modular remote & encrypted mount manager",
     version,
-    after_help = "Use 'mntctl <command> --help' for more information about a command."
+    author = "Steven Foerster <https://stevenfoerster.com>",
+    after_help = "Written by Steven Foerster <https://stevenfoerster.com>\n\nUse 'mntctl <command> --help' for more information about a command."
 )]
 pub struct Cli {
     /// Operate on system-level mounts (uses pkexec for privilege escalation)
