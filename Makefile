@@ -9,10 +9,15 @@ build:
 install:
 	install -Dm755 target/release/mntctl $(DESTDIR)$(BINDIR)/mntctl
 
+test:
+	cargo fmt --check
+	cargo clippy -- -D warnings
+	cargo test
+
 clean:
 	cargo clean
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/mntctl
 
-.PHONY: all build clean install uninstall
+.PHONY: all build test clean install uninstall
