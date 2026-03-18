@@ -1,0 +1,13 @@
+[mount]
+name = "bastion-e2a"
+type = "sshfs"
+source = "sfoerster.admin@bastion.rimstorm.cloud:/opt/enclave2-automation"
+target = "~/Projects/rimstorm-dev/enclave2-dev/bastion-e2a"
+scope = "user"
+
+[options]
+cache = "yes"
+kernel_cache = true
+reconnect = true
+ServerAliveInterval = 15
+sftp_server = "/usr/bin/sudo -u rimstorm /usr/libexec/openssh/sftp-server"

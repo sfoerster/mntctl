@@ -1,0 +1,11 @@
+[mount]
+name = "test-sshfs"
+type = "sshfs"
+source = "user@host:/remote/path"
+target = "/tmp/mntctl-test"
+scope = "user"
+
+[options]
+cache = "yes"
+reconnect = true
+ServerAliveInterval = 15
