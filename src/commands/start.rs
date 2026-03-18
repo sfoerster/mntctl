@@ -1,4 +1,4 @@
-use crate::backend::BackendRegistry;
+use crate::backend::{build_mount_context, BackendRegistry};
 use crate::config;
 use crate::output::color;
 use anyhow::Result;
@@ -18,7 +18,8 @@ pub fn run(name: &str, registry: &BackendRegistry) -> Result<()> {
         return Ok(());
     }
 
-    backend.mount(&config)?;
+    let ctx = build_mount_context(backend, &config)?;
+    backend.mount(&config, &ctx)?;
 
     println!(
         "{} Mounted '{}' at {}",

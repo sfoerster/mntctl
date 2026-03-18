@@ -91,6 +91,16 @@ impl SystemdUnit {
         }
     }
 
+    /// Add an entry to an existing section by name.
+    pub fn add_entry(&mut self, section_name: &str, key: &str, value: &str) {
+        for section in &mut self.sections {
+            if section.name == section_name {
+                section.entries.push((key.to_string(), value.to_string()));
+                return;
+            }
+        }
+    }
+
     /// Render the unit file to a string.
     pub fn render(&self) -> String {
         let mut output = String::new();

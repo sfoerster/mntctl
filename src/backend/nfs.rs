@@ -1,4 +1,4 @@
-use crate::backend::{check_binaries, is_mountpoint, Backend};
+use crate::backend::{check_binaries, is_mountpoint, Backend, MountContext};
 use crate::config::{BackendType, MountConfig, MountScope};
 use crate::error::MntctlError;
 use crate::systemd::unit::SystemdUnit;
@@ -16,7 +16,7 @@ impl Backend for NfsBackend {
         BackendType::Nfs
     }
 
-    fn mount(&self, config: &MountConfig) -> Result<()> {
+    fn mount(&self, config: &MountConfig, _ctx: &MountContext) -> Result<()> {
         check_binaries(&self.required_binaries())?;
 
         let target = config.resolved_target()?;

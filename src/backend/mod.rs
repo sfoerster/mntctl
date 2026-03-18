@@ -1,3 +1,6 @@
+pub mod cryfs;
+pub mod encfs;
+pub mod gocryptfs;
 pub mod nfs;
 pub mod rclone;
 pub mod smb;
@@ -7,6 +10,15 @@ use crate::config::{BackendType, MountConfig};
 use crate::systemd::unit::SystemdUnit;
 use anyhow::Result;
 use std::collections::HashMap;
+
+/// Options reserved by encrypted backends (excluded from generic pass-through).
+pub const ENCRYPTED_RESERVED_OPTIONS: &[&str] = &["password_file", "password_cmd"];
+
+/// Context passed to mount operations (e.g., an interactively prompted passphrase).
+#[derive(Default)]
+pub struct MountContext {
+    pub passphrase: Option<String>,
+}
 
 /// Trait that all mount backends must implement.
 #[allow(dead_code)]
@@ -18,7 +30,7 @@ pub trait Backend: Send + Sync {
     fn backend_type(&self) -> BackendType;
 
     /// Mount the filesystem.
-    fn mount(&self, config: &MountConfig) -> Result<()>;
+    fn mount(&self, config: &MountConfig, ctx: &MountContext) -> Result<()>;
 
     /// Unmount the filesystem.
     fn unmount(&self, config: &MountConfig) -> Result<()>;
@@ -34,6 +46,11 @@ pub trait Backend: Send + Sync {
 
     /// List of binary names that must be present on the system.
     fn required_binaries(&self) -> Vec<&str>;
+
+    /// Whether this backend manages encrypted filesystems.
+    fn is_encrypted(&self) -> bool {
+        false
+    }
 
     /// Default options for this backend.
     fn default_options(&self) -> HashMap<&str, &str> {
@@ -55,6 +72,9 @@ impl BackendRegistry {
         registry.register(Box::new(rclone::RcloneBackend));
         registry.register(Box::new(nfs::NfsBackend));
         registry.register(Box::new(smb::SmbBackend));
+        registry.register(Box::new(gocryptfs::GocryptfsBackend));
+        registry.register(Box::new(cryfs::CryfsBackend));
+        registry.register(Box::new(encfs::EncfsBackend));
         registry
     }
 
@@ -182,6 +202,22 @@ pub fn unit_name_for_config(config: &MountConfig) -> Result<String> {
             Ok(format!("{unit_base}.mount"))
         }
         _ => Ok(format!("mntctl-{}.service", config.name())),
+    }
+}
+
+/// Build a MountContext, prompting for a passphrase if needed.
+pub fn build_mount_context(backend: &dyn Backend, config: &MountConfig) -> Result<MountContext> {
+    if backend.is_encrypted()
+        && config.option_str("password_file").is_none()
+        && config.option_str("password_cmd").is_none()
+    {
+        let passphrase =
+            rpassword::prompt_password(format!("Passphrase for '{}': ", config.name()))?;
+        Ok(MountContext {
+            passphrase: Some(passphrase),
+        })
+    } else {
+        Ok(MountContext::default())
     }
 }
 

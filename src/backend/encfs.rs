@@ -1,22 +1,26 @@
-use crate::backend::{check_binaries, fuse_is_mounted, fuse_unmount, Backend, MountContext};
+use crate::backend::{
+    check_binaries, fuse_is_mounted, fuse_unmount, Backend, MountContext,
+    ENCRYPTED_RESERVED_OPTIONS,
+};
 use crate::config::{BackendType, MountConfig};
 use crate::error::MntctlError;
 use crate::systemd::unit::SystemdUnit;
 use anyhow::{Context, Result};
-use std::collections::HashMap;
+use std::io::Write;
+use std::process::Stdio;
 
-pub struct RcloneBackend;
+pub struct EncfsBackend;
 
-impl Backend for RcloneBackend {
+impl Backend for EncfsBackend {
     fn name(&self) -> &str {
-        "rclone"
+        "encfs"
     }
 
     fn backend_type(&self) -> BackendType {
-        BackendType::Rclone
+        BackendType::Encfs
     }
 
-    fn mount(&self, config: &MountConfig, _ctx: &MountContext) -> Result<()> {
+    fn mount(&self, config: &MountConfig, ctx: &MountContext) -> Result<()> {
         check_binaries(&self.required_binaries())?;
 
         let target = config.resolved_target()?;
@@ -26,11 +30,22 @@ impl Backend for RcloneBackend {
             })?;
         }
 
-        let mut cmd = std::process::Command::new("rclone");
-        cmd.arg("mount").arg(config.source()).arg(&target);
+        let mut cmd = std::process::Command::new("encfs");
 
-        // Apply options.
+        if let Some(password_cmd) = config.option_str("password_cmd") {
+            cmd.arg(format!("--extpass={password_cmd}"));
+        } else if let Some(password_file) = config.option_str("password_file") {
+            cmd.arg(format!("--extpass=cat {password_file}"));
+        } else {
+            // Read passphrase from stdin.
+            cmd.arg("--stdinpass");
+        }
+
+        // Pass through non-reserved options.
         for (k, v) in &config.options {
+            if ENCRYPTED_RESERVED_OPTIONS.contains(&k.as_str()) {
+                continue;
+            }
             let val = match v {
                 toml::Value::String(s) => s.clone(),
                 toml::Value::Boolean(b) => {
@@ -43,7 +58,6 @@ impl Backend for RcloneBackend {
                 toml::Value::Integer(i) => i.to_string(),
                 other => other.to_string(),
             };
-
             if val.is_empty() {
                 cmd.arg(format!("--{k}"));
             } else {
@@ -51,13 +65,28 @@ impl Backend for RcloneBackend {
             }
         }
 
-        let output = cmd.output().context("failed to execute rclone")?;
+        cmd.arg(config.source()).arg(&target);
+
+        if ctx.passphrase.is_some() {
+            cmd.stdin(Stdio::piped());
+        }
+
+        let mut child = cmd.spawn().context("failed to execute encfs")?;
+
+        if let Some(ref passphrase) = ctx.passphrase {
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(passphrase.as_bytes())?;
+                stdin.write_all(b"\n")?;
+            }
+        }
+
+        let output = child.wait_with_output()?;
 
         if output.status.success() {
             Ok(())
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(MntctlError::MountError(format!("rclone mount failed: {}", stderr.trim())).into())
+            Err(MntctlError::MountError(format!("encfs failed: {}", stderr.trim())).into())
         }
     }
 
@@ -68,18 +97,12 @@ impl Backend for RcloneBackend {
 
     fn is_mounted(&self, config: &MountConfig) -> Result<bool> {
         let target = config.resolved_target()?;
-        fuse_is_mounted(&target, "rclone")
+        fuse_is_mounted(&target, "encfs")
     }
 
     fn validate_config(&self, config: &MountConfig) -> Result<()> {
         if config.source().is_empty() {
             return Err(MntctlError::ConfigError("source cannot be empty".to_string()).into());
-        }
-        if !config.source().contains(':') {
-            return Err(MntctlError::ConfigError(
-                "rclone source must be in the format remote:path".to_string(),
-            )
-            .into());
         }
         if config.target().is_empty() {
             return Err(MntctlError::ConfigError("target cannot be empty".to_string()).into());
@@ -91,13 +114,20 @@ impl Backend for RcloneBackend {
         self.validate_config(config)?;
         let target = config.resolved_target()?;
 
-        let mut exec_args = vec![
-            "mount".to_string(),
-            config.source().to_string(),
-            target.to_string_lossy().to_string(),
-        ];
+        let mut exec_args = Vec::new();
+
+        if let Some(password_cmd) = config.option_str("password_cmd") {
+            exec_args.push(format!("--extpass={password_cmd}"));
+        } else if let Some(password_file) = config.option_str("password_file") {
+            exec_args.push(format!("--extpass=cat {password_file}"));
+        }
+
+        exec_args.push("-f".to_string()); // foreground for systemd
 
         for (k, v) in &config.options {
+            if ENCRYPTED_RESERVED_OPTIONS.contains(&k.as_str()) {
+                continue;
+            }
             let val = match v {
                 toml::Value::String(s) => s.clone(),
                 toml::Value::Boolean(b) => {
@@ -110,7 +140,6 @@ impl Backend for RcloneBackend {
                 toml::Value::Integer(i) => i.to_string(),
                 other => other.to_string(),
             };
-
             if val.is_empty() {
                 exec_args.push(format!("--{k}"));
             } else {
@@ -118,24 +147,27 @@ impl Backend for RcloneBackend {
             }
         }
 
-        let exec_start = format!("/usr/bin/rclone {}", exec_args.join(" "));
+        exec_args.push(config.source().to_string());
+        exec_args.push(target.to_string_lossy().to_string());
+
+        let exec_start = format!("/usr/bin/encfs {}", exec_args.join(" "));
         let exec_stop = format!("/usr/bin/fusermount -u {}", target.display());
 
         Ok(SystemdUnit::service(
             &format!("mntctl-{}", config.name()),
-            &format!("mntctl mount: {} (rclone)", config.name()),
+            &format!("mntctl mount: {} (encfs)", config.name()),
             &exec_start,
             &exec_stop,
-            "notify",
+            "simple",
         ))
     }
 
     fn required_binaries(&self) -> Vec<&str> {
-        vec!["rclone", "fusermount"]
+        vec!["encfs", "fusermount"]
     }
 
-    fn default_options(&self) -> HashMap<&str, &str> {
-        HashMap::new()
+    fn is_encrypted(&self) -> bool {
+        true
     }
 }
 
@@ -149,17 +181,16 @@ mod tests {
     fn sample_config() -> MountConfig {
         let mut options = BTreeMap::new();
         options.insert(
-            "vfs-cache-mode".to_string(),
-            toml::Value::String("full".to_string()),
+            "password_file".to_string(),
+            toml::Value::String("/home/user/.secrets/encfs.pass".to_string()),
         );
-        options.insert("allow-other".to_string(), toml::Value::Boolean(true));
 
         MountConfig {
             mount: MountSection {
-                name: "test-rclone".to_string(),
-                backend_type: BackendType::Rclone,
-                source: "gdrive:documents".to_string(),
-                target: "/tmp/mntctl-rclone-test".to_string(),
+                name: "test-encfs".to_string(),
+                backend_type: BackendType::Encfs,
+                source: "/home/user/.encrypted/encfs-vault".to_string(),
+                target: "/tmp/mntctl-encfs-test".to_string(),
                 scope: MountScope::User,
             },
             options,
@@ -168,46 +199,64 @@ mod tests {
 
     #[test]
     fn validate_valid_config() {
-        let backend = RcloneBackend;
+        let backend = EncfsBackend;
         assert!(backend.validate_config(&sample_config()).is_ok());
     }
 
     #[test]
     fn validate_empty_source() {
-        let backend = RcloneBackend;
+        let backend = EncfsBackend;
         let mut config = sample_config();
         config.mount.source = String::new();
         assert!(backend.validate_config(&config).is_err());
     }
 
     #[test]
-    fn validate_missing_colon() {
-        let backend = RcloneBackend;
+    fn validate_empty_target() {
+        let backend = EncfsBackend;
         let mut config = sample_config();
-        config.mount.source = "gdrive-no-colon".to_string();
+        config.mount.target = String::new();
         assert!(backend.validate_config(&config).is_err());
     }
 
     #[test]
     fn generate_systemd_unit() {
-        let backend = RcloneBackend;
+        let backend = EncfsBackend;
         let config = sample_config();
         let unit = backend.generate_systemd_unit(&config).unwrap();
         let rendered = unit.render();
         assert!(rendered.contains("[Service]"));
-        assert!(rendered.contains("Type=notify"));
-        assert!(rendered.contains("rclone mount"));
-        assert!(rendered.contains("gdrive:documents"));
-        assert!(rendered.contains("--vfs-cache-mode=full"));
-        assert!(rendered.contains("--allow-other"));
+        assert!(rendered.contains("encfs"));
+        assert!(rendered.contains("-f"));
+        assert!(rendered.contains("--extpass=cat /home/user/.secrets/encfs.pass"));
         assert!(rendered.contains("fusermount -u"));
     }
 
     #[test]
+    fn generate_unit_with_password_cmd() {
+        let backend = EncfsBackend;
+        let mut config = sample_config();
+        config.options.clear();
+        config.options.insert(
+            "password_cmd".to_string(),
+            toml::Value::String("pass show encfs-vault".to_string()),
+        );
+        let unit = backend.generate_systemd_unit(&config).unwrap();
+        let rendered = unit.render();
+        assert!(rendered.contains("--extpass=pass show encfs-vault"));
+    }
+
+    #[test]
     fn unit_name_is_service() {
-        let backend = RcloneBackend;
+        let backend = EncfsBackend;
         let config = sample_config();
         let unit = backend.generate_systemd_unit(&config).unwrap();
-        assert_eq!(unit.name, "mntctl-test-rclone.service");
+        assert!(unit.name.ends_with(".service"));
+    }
+
+    #[test]
+    fn is_encrypted_returns_true() {
+        let backend = EncfsBackend;
+        assert!(backend.is_encrypted());
     }
 }

@@ -144,28 +144,99 @@ See [examples/smb.md](examples/smb.md) for more.
 
 ---
 
-## gocryptfs (planned)
+## gocryptfs (implemented)
 
-Encrypted FUSE filesystem.
+Encrypted FUSE filesystem using GoCryptFS.
 
-**systemd unit**: `.service` with `-passfile` for non-interactive password
+**Required binaries**: `gocryptfs`, `fusermount`
+
+**Source format**: path to the encrypted (ciphertext) directory
+
+**systemd unit**: `.service` with `Type=simple` (gocryptfs runs in foreground with `-fg`)
 
 **Password handling**:
-- `mntctl start`: interactive prompt via terminal
-- `mntctl enable`: requires `password_file` in options
+- `mntctl start`: interactive passphrase prompt (piped via `-stdin`)
+- `mntctl enable`: requires `password_file` or `password_cmd` in config
+- `password_file`: passed as `-passfile <path>`
+- `password_cmd`: passed as `-extpass <command>`
+
+**Example config**:
+
+```toml
+[mount]
+name = "vault"
+type = "gocryptfs"
+source = "/home/user/.encrypted/vault"
+target = "~/mnt/vault"
+
+[options]
+password_file = "/home/user/.secrets/vault.pass"
+```
+
+See [examples/gocryptfs.md](examples/gocryptfs.md) for more.
 
 ---
 
-## cryfs (planned)
+## cryfs (implemented)
 
-Encrypted FUSE filesystem.
+Encrypted FUSE filesystem using CryFS.
 
-**systemd unit**: `.service` with `CRYFS_FRONTEND=noninteractive` and `--passphrase-file`
+**Required binaries**: `cryfs`, `fusermount`
+
+**Source format**: path to the encrypted (ciphertext) directory
+
+**systemd unit**: `.service` with `Type=simple`, `Environment=CRYFS_FRONTEND=noninteractive`
+
+**Password handling**:
+- `mntctl start`: interactive passphrase prompt (piped via stdin)
+- `mntctl enable`: requires `password_file` or `password_cmd` in config
+- `password_file`: passed as `--passphrase-file <path>`
+- `password_cmd`: executed via shell, output piped to cryfs stdin
+
+**Example config**:
+
+```toml
+[mount]
+name = "cryfs-vault"
+type = "cryfs"
+source = "/home/user/.encrypted/cryfs-vault"
+target = "~/mnt/cryfs-vault"
+
+[options]
+password_file = "/home/user/.secrets/cryfs.pass"
+```
+
+See [examples/cryfs.md](examples/cryfs.md) for more.
 
 ---
 
-## encfs (planned)
+## encfs (implemented)
 
-Encrypted FUSE filesystem.
+Encrypted FUSE filesystem using EncFS.
 
-**systemd unit**: `.service` with `--extpass` for external password command
+**Required binaries**: `encfs`, `fusermount`
+
+**Source format**: path to the encrypted (ciphertext) directory
+
+**systemd unit**: `.service` with `Type=simple` (encfs runs in foreground with `-f`)
+
+**Password handling**:
+- `mntctl start`: interactive passphrase prompt (piped via `--stdinpass`)
+- `mntctl enable`: requires `password_file` or `password_cmd` in config
+- `password_file`: passed as `--extpass=cat <path>`
+- `password_cmd`: passed as `--extpass=<command>`
+
+**Example config**:
+
+```toml
+[mount]
+name = "encfs-vault"
+type = "encfs"
+source = "/home/user/.encrypted/encfs-vault"
+target = "~/mnt/encfs-vault"
+
+[options]
+password_cmd = "pass show encfs-vault"
+```
+
+See [examples/encfs.md](examples/encfs.md) for more.

@@ -39,14 +39,14 @@
 - Tests: unit generation per backend, path encoding, validation
 - Docs: example configs per backend
 
-## Phase 5 — Encrypted Backends
+## Phase 5 — Encrypted Backends (complete)
 
-- [ ] gocryptfs backend (-fg foreground, -passfile for systemd)
-- [ ] cryfs backend (CRYFS_FRONTEND=noninteractive, --passphrase-file)
-- [ ] encfs backend (--extpass for external password command)
-- [ ] Interactive passphrase prompting via rpassword for `mntctl start`
-- [ ] Validation: `mntctl enable` requires password_file or password_cmd in config
-- [ ] Tests: passphrase handling, unit generation
+- [x] gocryptfs backend (-fg foreground, -passfile for systemd)
+- [x] cryfs backend (CRYFS_FRONTEND=noninteractive, --passphrase-file)
+- [x] encfs backend (--extpass for external password command)
+- [x] Interactive passphrase prompting via rpassword for `mntctl start`
+- [x] Validation: `mntctl enable` requires password_file or password_cmd in config
+- [x] Tests: passphrase handling, unit generation
 - [ ] Docs: encrypted backend guide
 
 ## Phase 6 — Polish
