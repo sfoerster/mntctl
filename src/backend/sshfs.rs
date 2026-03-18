@@ -67,8 +67,6 @@ impl Backend for SshfsBackend {
                 } else {
                     ssh_opt_parts.push(format!("{k}={v}"));
                 }
-            } else if k == "sftp_server" {
-                cmd.arg("-s").arg(v);
             } else if v.is_empty() {
                 sshfs_opt_parts.push(k.clone());
             } else {
@@ -159,9 +157,6 @@ impl Backend for SshfsBackend {
                 } else {
                     ssh_opt_parts.push(format!("{k}={val}"));
                 }
-            } else if k == "sftp_server" {
-                exec_args.push("-s".to_string());
-                exec_args.push(val);
             } else if val.is_empty() {
                 sshfs_opt_parts.push(k.clone());
             } else {
@@ -278,6 +273,6 @@ mod tests {
         );
         let unit = backend.generate_systemd_unit(&config).unwrap();
         let rendered = unit.render();
-        assert!(rendered.contains("-s /usr/bin/sudo -u user /usr/libexec/openssh/sftp-server"));
+        assert!(rendered.contains("sftp_server=/usr/bin/sudo -u user /usr/libexec/openssh/sftp-server"));
     }
 }
