@@ -273,6 +273,8 @@ mod tests {
         );
         let unit = backend.generate_systemd_unit(&config).unwrap();
         let rendered = unit.render();
-        assert!(rendered.contains("sftp_server=/usr/bin/sudo -u user /usr/libexec/openssh/sftp-server"));
+        assert!(
+            rendered.contains("sftp_server=/usr/bin/sudo -u user /usr/libexec/openssh/sftp-server")
+        );
     }
 }
