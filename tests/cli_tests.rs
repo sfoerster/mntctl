@@ -89,3 +89,37 @@ fn cli_completion_bash() {
         .success()
         .stdout(predicate::str::contains("_mntctl"));
 }
+
+#[test]
+fn cli_doctor_runs() {
+    Command::cargo_bin("mntctl")
+        .unwrap()
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("mntctl doctor"))
+        .stdout(predicate::str::contains("/proc/mounts"))
+        .stdout(predicate::str::contains("systemd"));
+}
+
+#[test]
+fn cli_doctor_checks_core_binaries() {
+    Command::cargo_bin("mntctl")
+        .unwrap()
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("systemctl"))
+        .stdout(predicate::str::contains("fusermount"));
+}
+
+#[test]
+fn cli_doctor_checks_backend_binaries() {
+    Command::cargo_bin("mntctl")
+        .unwrap()
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("sshfs"))
+        .stdout(predicate::str::contains("rclone"));
+}

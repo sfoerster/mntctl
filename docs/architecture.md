@@ -75,3 +75,4 @@ Five of seven backends use FUSE. Common logic is extracted into `backend/mod.rs`
 - **Idempotent**: `start` on already-mounted = info message + success; `stop` on unmounted = info + success
 - **Config permissions**: 0600 for mount config files (may contain credentials)
 - **No mocking mounts in CI**: unit generation tested via string assertions, actual mount/unmount is manual only
+- **Graceful dependency checks**: `mntctl doctor` verifies systemd, /proc/mounts, and all backend binaries before you need them

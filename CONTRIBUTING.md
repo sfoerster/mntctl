@@ -33,7 +33,7 @@ cargo test
 ## Testing
 
 - **Unit tests**: config parsing, validation, systemd unit generation (pure string output)
-- **CLI tests**: `assert_cmd` binary tests for help, list, status, completions
+- **CLI tests**: `assert_cmd` binary tests for help, list, status, completions, doctor
 - **No mount mocking**: actual mount/unmount operations are tested manually, not in CI
 
 ## Code style

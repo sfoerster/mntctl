@@ -23,7 +23,7 @@
 
 ## Phase 3 — Persistence (complete)
 
-- Commands: enable, disable, restart, edit, completion
+- Commands: enable, disable, restart, edit, completion, doctor
 - systemd unit install/remove logic
 - Polkit policy file
 - Tests: CLI integration tests for all commands
@@ -53,7 +53,7 @@
 - [ ] Man page generation (clap_mangen or hidden subcommand)
 - [ ] Release workflow: multi-arch binaries, checksums, GitHub Release
 - [ ] AUR package / deb packaging
-- [ ] `mntctl doctor` subcommand: check binary availability, config validity, systemd health
+- [x] ~~`mntctl doctor` subcommand: check binary availability, config validity, systemd health~~
 - [ ] `mntctl log <name>`: tail journalctl for a mount's systemd unit
 - [ ] Colored diff output for `mntctl edit` validation errors
 - [ ] Config migration tooling (import from fstab entries)
