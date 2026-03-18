@@ -9,7 +9,10 @@ build:
 install:
 	install -Dm755 target/release/mntctl $(DESTDIR)$(BINDIR)/mntctl
 
+clean:
+	cargo clean
+
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/mntctl
 
-.PHONY: all build install uninstall
+.PHONY: all build clean install uninstall
