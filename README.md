@@ -23,7 +23,7 @@ cargo install --path .
 
 ### From release binaries
 
-Download the latest binary from [Releases](https://github.com/sfoerster/mntctl/releases) for your architecture.
+Pre-built binaries will be available on the [Releases](https://github.com/sfoerster/mntctl/releases) page once the first version is tagged. The release workflow builds for `x86_64` and `aarch64` automatically on `v*` tags.
 
 ## Quick start
 
