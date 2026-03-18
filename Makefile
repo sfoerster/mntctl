@@ -6,7 +6,7 @@ all: build
 build:
 	cargo build --release
 
-install: build
+install:
 	install -Dm755 target/release/mntctl $(DESTDIR)$(BINDIR)/mntctl
 
 uninstall:
