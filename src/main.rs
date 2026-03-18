@@ -63,6 +63,8 @@ fn main() {
             commands::completion::run(shell);
             Ok(())
         }
+
+        Command::Doctor => commands::doctor::run(&registry),
     };
 
     if let Err(e) = result {

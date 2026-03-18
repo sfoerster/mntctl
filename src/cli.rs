@@ -105,4 +105,7 @@ pub enum Command {
         /// Shell to generate completions for
         shell: Shell,
     },
+
+    /// Check system dependencies and report status
+    Doctor,
 }

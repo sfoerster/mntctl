@@ -67,6 +67,7 @@ mntctl status [name]         # detailed info or overview
 mntctl list                  # table of all mounts with status
 mntctl edit <name>           # open TOML in $EDITOR
 mntctl completion <shell>    # generate shell completions (bash, zsh, fish)
+mntctl doctor                # check system dependencies
 ```
 
 Global flags:
