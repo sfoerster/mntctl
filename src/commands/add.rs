@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
+#[allow(clippy::too_many_arguments)]
 pub fn run(
     name: &str,
     backend_type: Option<&str>,
