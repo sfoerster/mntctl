@@ -19,6 +19,7 @@ pub fn render_mount_table(configs: &[MountConfig], registry: &BackendRegistry) -
             Cell::new("SOURCE"),
             Cell::new("TARGET"),
             Cell::new("SCOPE"),
+            Cell::new("GROUPS"),
             Cell::new("STATUS"),
             Cell::new("ENABLED"),
         ]);
@@ -41,12 +42,15 @@ pub fn render_mount_table(configs: &[MountConfig], registry: &BackendRegistry) -
             Err(_) => color::status_style("disabled"),
         };
 
+        let groups = config.groups().join(", ");
+
         table.add_row(vec![
             Cell::new(config.name()),
             Cell::new(config.backend_type().to_string()),
             Cell::new(truncate(config.source(), 40)),
             Cell::new(truncate(config.target(), 35)),
             Cell::new(config.scope().to_string()),
+            Cell::new(&groups),
             Cell::new(&mounted),
             Cell::new(&enabled),
         ]);
