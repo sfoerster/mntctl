@@ -73,6 +73,8 @@ pub struct MountSection {
     pub target: String,
     #[serde(default = "default_scope")]
     pub scope: MountScope,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<String>,
 }
 
 fn default_scope() -> MountScope {
@@ -106,6 +108,10 @@ impl MountConfig {
 
     pub fn scope(&self) -> MountScope {
         self.mount.scope
+    }
+
+    pub fn groups(&self) -> &[String] {
+        &self.mount.groups
     }
 
     /// Resolve the target path, expanding `~` to the user's home directory.
@@ -178,6 +184,7 @@ ServerAliveInterval = 15
         assert_eq!(config.source(), "user@host:/path");
         assert_eq!(config.target(), "~/mnt/test");
         assert_eq!(config.scope(), MountScope::User);
+        assert_eq!(config.groups(), &[] as &[String]);
         assert_eq!(config.option_str("cache").unwrap(), "yes");
         assert_eq!(config.option_bool("reconnect").unwrap(), true);
     }
@@ -193,6 +200,21 @@ target = "/mnt/nfs"
 "#;
         let config: MountConfig = toml::from_str(toml_str).unwrap();
         assert_eq!(config.scope(), MountScope::User);
+        assert_eq!(config.groups(), &[] as &[String]);
+    }
+
+    #[test]
+    fn parse_mount_config_with_groups() {
+        let toml_str = r#"
+[mount]
+name = "test"
+type = "sshfs"
+source = "user@host:/path"
+target = "~/mnt/test"
+groups = ["work", "daily"]
+"#;
+        let config: MountConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.groups(), &["work", "daily"]);
     }
 
     #[test]
@@ -204,11 +226,33 @@ target = "/mnt/nfs"
                 source: "user@host:/path".to_string(),
                 target: "~/mnt/test".to_string(),
                 scope: MountScope::User,
+                groups: vec![],
             },
             options: BTreeMap::new(),
         };
         let serialized = toml::to_string_pretty(&config).unwrap();
         let parsed: MountConfig = toml::from_str(&serialized).unwrap();
         assert_eq!(parsed.name(), config.name());
+        // Empty groups should not appear in serialized output
+        assert!(!serialized.contains("groups"));
+    }
+
+    #[test]
+    fn serialize_mount_config_with_groups() {
+        let config = MountConfig {
+            mount: MountSection {
+                name: "test".to_string(),
+                backend_type: BackendType::Sshfs,
+                source: "user@host:/path".to_string(),
+                target: "~/mnt/test".to_string(),
+                scope: MountScope::User,
+                groups: vec!["work".to_string(), "daily".to_string()],
+            },
+            options: BTreeMap::new(),
+        };
+        let serialized = toml::to_string_pretty(&config).unwrap();
+        assert!(serialized.contains("groups"));
+        let parsed: MountConfig = toml::from_str(&serialized).unwrap();
+        assert_eq!(parsed.groups(), &["work", "daily"]);
     }
 }

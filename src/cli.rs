@@ -44,6 +44,10 @@ pub enum Command {
         /// Mount options as key=val pairs (comma-separated)
         #[arg(short = 'o', long, value_delimiter = ',')]
         options: Vec<String>,
+
+        /// Assign to groups (comma-separated)
+        #[arg(short, long, value_delimiter = ',')]
+        group: Vec<String>,
     },
 
     /// Remove a mount configuration
@@ -59,13 +63,29 @@ pub enum Command {
     /// Mount a filesystem (transient)
     Start {
         /// Mount name
-        name: String,
+        name: Option<String>,
+
+        /// Mount all configured filesystems
+        #[arg(long)]
+        all: bool,
+
+        /// Mount all filesystems in a group
+        #[arg(short, long)]
+        group: Option<String>,
     },
 
     /// Unmount a filesystem
     Stop {
         /// Mount name
-        name: String,
+        name: Option<String>,
+
+        /// Unmount all mounted filesystems
+        #[arg(long)]
+        all: bool,
+
+        /// Unmount all filesystems in a group
+        #[arg(short, long)]
+        group: Option<String>,
     },
 
     /// Install and enable a systemd unit for persistent mounting
@@ -83,7 +103,15 @@ pub enum Command {
     /// Unmount and remount a filesystem
     Restart {
         /// Mount name
-        name: String,
+        name: Option<String>,
+
+        /// Restart all configured filesystems
+        #[arg(long)]
+        all: bool,
+
+        /// Restart all filesystems in a group
+        #[arg(short, long)]
+        group: Option<String>,
     },
 
     /// Show detailed status of a mount, or overview of all mounts
@@ -93,7 +121,11 @@ pub enum Command {
     },
 
     /// List all configured mounts
-    List,
+    List {
+        /// Filter by group
+        #[arg(short, long)]
+        group: Option<String>,
+    },
 
     /// Open a mount configuration in $EDITOR
     Edit {

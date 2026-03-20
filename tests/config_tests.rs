@@ -146,3 +146,129 @@ fn config_permissions_on_unix() {
     let metadata = std::fs::metadata(&path).unwrap();
     assert_eq!(metadata.permissions().mode() & 0o777, 0o600);
 }
+
+// --- New tests for groups ---
+
+#[test]
+fn config_with_groups_parses() {
+    let toml_str = r#"
+[mount]
+name = "grouped"
+type = "sshfs"
+source = "user@host:/path"
+target = "~/mnt/grouped"
+groups = ["work", "daily"]
+
+[options]
+reconnect = true
+"#;
+
+    let config: toml::Value = toml::from_str(toml_str).unwrap();
+    let mount = config.get("mount").unwrap();
+    let groups = mount.get("groups").unwrap().as_array().unwrap();
+    assert_eq!(groups.len(), 2);
+    assert_eq!(groups[0].as_str().unwrap(), "work");
+    assert_eq!(groups[1].as_str().unwrap(), "daily");
+}
+
+#[test]
+fn config_without_groups_parses() {
+    let toml_str = r#"
+[mount]
+name = "no-groups"
+type = "sshfs"
+source = "user@host:/path"
+target = "~/mnt/no-groups"
+"#;
+
+    let config: toml::Value = toml::from_str(toml_str).unwrap();
+    let mount = config.get("mount").unwrap();
+    // groups field is optional and absent
+    assert!(mount.get("groups").is_none());
+}
+
+#[test]
+fn config_empty_groups_parses() {
+    let toml_str = r#"
+[mount]
+name = "empty-groups"
+type = "sshfs"
+source = "user@host:/path"
+target = "~/mnt/empty-groups"
+groups = []
+"#;
+
+    let config: toml::Value = toml::from_str(toml_str).unwrap();
+    let mount = config.get("mount").unwrap();
+    let groups = mount.get("groups").unwrap().as_array().unwrap();
+    assert!(groups.is_empty());
+}
+
+#[test]
+fn config_groups_roundtrip() {
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+    struct MountSection {
+        name: String,
+        #[serde(rename = "type")]
+        backend_type: String,
+        source: String,
+        target: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        groups: Vec<String>,
+    }
+
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+    struct Config {
+        mount: MountSection,
+        #[serde(default)]
+        options: BTreeMap<String, toml::Value>,
+    }
+
+    let original = Config {
+        mount: MountSection {
+            name: "test".to_string(),
+            backend_type: "sshfs".to_string(),
+            source: "user@host:/path".to_string(),
+            target: "~/mnt/test".to_string(),
+            groups: vec!["work".to_string(), "daily".to_string()],
+        },
+        options: BTreeMap::new(),
+    };
+
+    let serialized = toml::to_string_pretty(&original).unwrap();
+    assert!(serialized.contains("groups"));
+    let deserialized: Config = toml::from_str(&serialized).unwrap();
+    assert_eq!(original, deserialized);
+}
+
+#[test]
+fn config_empty_groups_not_serialized() {
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+    struct MountSection {
+        name: String,
+        #[serde(rename = "type")]
+        backend_type: String,
+        source: String,
+        target: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        groups: Vec<String>,
+    }
+
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+    struct Config {
+        mount: MountSection,
+    }
+
+    let original = Config {
+        mount: MountSection {
+            name: "test".to_string(),
+            backend_type: "sshfs".to_string(),
+            source: "user@host:/path".to_string(),
+            target: "~/mnt/test".to_string(),
+            groups: vec![],
+        },
+    };
+
+    let serialized = toml::to_string_pretty(&original).unwrap();
+    assert!(!serialized.contains("groups"));
+}

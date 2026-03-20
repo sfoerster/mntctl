@@ -198,6 +198,7 @@ mod tests {
                 source: "/home/user/.encrypted/encfs-vault".to_string(),
                 target: "/tmp/mntctl-encfs-test".to_string(),
                 scope: MountScope::User,
+                groups: vec![],
             },
             options,
         }

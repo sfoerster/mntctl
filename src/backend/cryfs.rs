@@ -251,6 +251,7 @@ mod tests {
                 source: "/home/user/.encrypted/cryfs-vault".to_string(),
                 target: "/tmp/mntctl-cryfs-test".to_string(),
                 scope: MountScope::User,
+                groups: vec![],
             },
             options,
         }

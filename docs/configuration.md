@@ -20,6 +20,7 @@ type = "sshfs"              # backend type
 source = "user@host:/path"  # backend-specific source
 target = "~/mnt/my-mount"   # local mount point (~ is expanded)
 scope = "user"              # "user" or "system" (default: "user")
+groups = ["work", "daily"]  # optional group tags (default: [])
 
 [options]
 # Backend-specific key-value options.
@@ -39,6 +40,30 @@ ServerAliveInterval = 15
 ### Optional fields
 
 - `scope` — `user` (default) or `system`
+- `groups` — list of group tags (default: `[]`). Groups allow batch operations on related mounts via `--group` or `--all` flags on `start`, `stop`, and `restart` commands. A mount can belong to multiple groups. Groups are assigned with `-g` when adding a mount, or by editing the config directly.
+
+### Groups
+
+Mounts can be tagged with one or more groups for batch operations:
+
+```bash
+# Add mounts with group tags
+mntctl add server1 -t sshfs -s user@s1:/data -T ~/mnt/s1 -g work
+mntctl add server2 -t sshfs -s user@s2:/data -T ~/mnt/s2 -g work,daily
+
+# Mount/unmount by group
+mntctl start --group work
+mntctl stop --group work
+
+# Mount/unmount all
+mntctl start --all
+mntctl stop --all
+
+# List mounts filtered by group
+mntctl list --group work
+```
+
+Batch operations continue on error and report which mounts failed at the end.
 
 ## Options
 

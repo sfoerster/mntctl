@@ -178,6 +178,7 @@ mod tests {
                 source: "fileserver:/export/data".to_string(),
                 target: "/mnt/nfs-data".to_string(),
                 scope: MountScope::System,
+                groups: vec![],
             },
             options,
         }

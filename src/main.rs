@@ -29,12 +29,14 @@ fn main() {
             source,
             target,
             options,
+            group,
         } => commands::add::run(
             &name,
             backend_type.as_deref(),
             &source,
             &target,
             &options,
+            &group,
             cli.system,
             &registry,
         ),
@@ -43,19 +45,61 @@ fn main() {
             commands::remove::run(&name, force, cli.system, &registry)
         }
 
-        Command::Start { name } => commands::start::run(&name, cli.system, &registry),
+        Command::Start { name, all, group } => {
+            if all {
+                commands::start::run_all(cli.system, &registry)
+            } else if let Some(group) = group {
+                commands::start::run_group(&group, cli.system, &registry)
+            } else if let Some(name) = name {
+                commands::start::run(&name, cli.system, &registry)
+            } else {
+                eprintln!(
+                    "{}: provide a mount name, --all, or --group",
+                    output::color::error("error")
+                );
+                std::process::exit(1);
+            }
+        }
 
-        Command::Stop { name } => commands::stop::run(&name, cli.system, &registry),
+        Command::Stop { name, all, group } => {
+            if all {
+                commands::stop::run_all(cli.system, &registry)
+            } else if let Some(group) = group {
+                commands::stop::run_group(&group, cli.system, &registry)
+            } else if let Some(name) = name {
+                commands::stop::run(&name, cli.system, &registry)
+            } else {
+                eprintln!(
+                    "{}: provide a mount name, --all, or --group",
+                    output::color::error("error")
+                );
+                std::process::exit(1);
+            }
+        }
 
         Command::Enable { name } => commands::enable::run(&name, cli.system, &registry),
 
         Command::Disable { name } => commands::disable::run(&name, cli.system),
 
-        Command::Restart { name } => commands::restart::run(&name, cli.system, &registry),
+        Command::Restart { name, all, group } => {
+            if all {
+                commands::restart::run_all(cli.system, &registry)
+            } else if let Some(group) = group {
+                commands::restart::run_group(&group, cli.system, &registry)
+            } else if let Some(name) = name {
+                commands::restart::run(&name, cli.system, &registry)
+            } else {
+                eprintln!(
+                    "{}: provide a mount name, --all, or --group",
+                    output::color::error("error")
+                );
+                std::process::exit(1);
+            }
+        }
 
         Command::Status { name } => commands::status::run(name.as_deref(), cli.system, &registry),
 
-        Command::List => commands::list::run(cli.system, &registry),
+        Command::List { group } => commands::list::run(group.as_deref(), cli.system, &registry),
 
         Command::Edit { name } => commands::edit::run(&name, cli.system),
 

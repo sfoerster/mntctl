@@ -226,6 +226,7 @@ mod tests {
                 source: "user@host:/remote/path".to_string(),
                 target: "/tmp/mntctl-test".to_string(),
                 scope: MountScope::User,
+                groups: vec![],
             },
             options,
         }

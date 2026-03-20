@@ -13,6 +13,7 @@ pub fn run(
     source: &str,
     target: &str,
     options: &[String],
+    groups: &[String],
     system: bool,
     registry: &BackendRegistry,
 ) -> Result<()> {
@@ -68,6 +69,7 @@ pub fn run(
             source: source.to_string(),
             target: target.to_string(),
             scope,
+            groups: groups.to_vec(),
         },
         options: opts,
     };

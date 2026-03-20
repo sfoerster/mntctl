@@ -49,7 +49,16 @@
 - [x] Tests: passphrase handling, unit generation
 - [x] Docs: encrypted backend guide / examples
 
-## Phase 6 — Polish
+## Phase 6 — Groups & Batch Operations (complete)
+
+- [x] `groups` field on mount config (optional, backward-compatible)
+- [x] `mntctl add -g group1,group2` to assign groups
+- [x] `mntctl start/stop/restart --all` to operate on all mounts
+- [x] `mntctl start/stop/restart --group <name>` to operate on a group
+- [x] `mntctl list --group <name>` to filter by group
+- [x] Batch error handling: continue on failure, report summary
+
+## Phase 7 — Polish
 
 - [ ] Man page generation (clap_mangen or hidden subcommand)
 - [x] Release workflow: multi-arch binaries, checksums, GitHub Release
@@ -62,7 +71,6 @@
 ## Ideas (not yet planned)
 
 - Automount-on-access via systemd .automount for FUSE backends
-- Mount groups: start/stop multiple related mounts together
 - Health checks: periodic connectivity verification with automatic restart
 - Desktop notifications on mount failure (via notify-send or D-Bus)
 - Bash/zsh prompt integration: show active mounts in PS1

@@ -170,6 +170,7 @@ mod tests {
                 source: "gdrive:documents".to_string(),
                 target: "/tmp/mntctl-rclone-test".to_string(),
                 scope: MountScope::User,
+                groups: vec![],
             },
             options,
         }

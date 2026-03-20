@@ -215,6 +215,19 @@ pub fn list_all_mount_configs() -> Result<Vec<MountConfig>> {
     Ok(configs)
 }
 
+/// List mount configs that belong to a given group.
+pub fn list_mount_configs_by_group(group: &str, system: bool) -> Result<Vec<MountConfig>> {
+    let configs = if system {
+        list_mount_configs(MountScope::System)?
+    } else {
+        list_all_mount_configs()?
+    };
+    Ok(configs
+        .into_iter()
+        .filter(|c| c.groups().iter().any(|g| g == group))
+        .collect())
+}
+
 /// Find a mount config by name, optionally restricting the lookup scope.
 pub fn find_mount_config_in_scope(name: &str, scope: Option<MountScope>) -> Result<MountConfig> {
     let scopes = match scope {

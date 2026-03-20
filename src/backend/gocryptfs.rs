@@ -204,6 +204,7 @@ mod tests {
                 source: "/home/user/.encrypted/vault".to_string(),
                 target: "/tmp/mntctl-gocryptfs-test".to_string(),
                 scope: MountScope::User,
+                groups: vec![],
             },
             options,
         }

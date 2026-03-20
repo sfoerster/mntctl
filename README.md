@@ -43,14 +43,26 @@ Download the latest binary from [Releases](https://github.com/sfoerster/mntctl/r
 # Add a mount configuration
 mntctl add bastion -t sshfs -s user@host:/remote/path -T ~/mnt/bastion
 
+# Add with group tags
+mntctl add work-data -t sshfs -s user@work:/data -T ~/mnt/work -g work,daily
+
 # Mount it
 mntctl start bastion
+
+# Mount all filesystems in a group
+mntctl start --group work
 
 # Check status
 mntctl status bastion
 
 # Unmount
 mntctl stop bastion
+
+# Unmount all mounted filesystems
+mntctl stop --all
+
+# Unmount a group
+mntctl stop --group work
 
 # Make it persistent (creates a systemd user service)
 mntctl enable bastion
@@ -68,15 +80,21 @@ mntctl remove bastion
 ## CLI reference
 
 ```
-mntctl add <name> [-t <backend>] -s <source> -T <target> [-o key=val,...]
+mntctl add <name> [-t <backend>] -s <source> -T <target> [-o key=val,...] [-g group,...]
 mntctl remove <name> [--force]
 mntctl start <name>          # mount now (transient)
+mntctl start --all           # mount all configured filesystems
+mntctl start --group <name>  # mount all in a group
 mntctl stop <name>           # unmount now
+mntctl stop --all            # unmount all mounted filesystems
+mntctl stop --group <name>   # unmount all in a group
 mntctl enable <name>         # install + enable systemd unit (persistent)
 mntctl disable <name>        # disable systemd unit
 mntctl restart <name>        # stop + start
+mntctl restart --all         # restart all configured filesystems
+mntctl restart --group <name> # restart all in a group
 mntctl status [name]         # detailed info or overview
-mntctl list                  # table of all mounts with status
+mntctl list [-g <group>]     # table of all mounts (optionally filtered by group)
 mntctl edit <name>           # open TOML in $EDITOR
 mntctl completion <shell>    # generate shell completions (bash, zsh, fish)
 mntctl doctor                # check system dependencies
@@ -97,6 +115,7 @@ type = "sshfs"
 source = "admin@bastion.example.com:/opt/data"
 target = "~/mnt/bastion-e2a"
 scope = "user"
+groups = ["work", "daily"]   # optional group tags
 
 [options]
 cache = "yes"

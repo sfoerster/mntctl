@@ -70,6 +70,18 @@ Five of seven backends use FUSE. Common logic is extracted into `backend/mod.rs`
 - Exit codes: 0 = success, 1 = general error, 2 = config error, 3 = systemd error
 - Never panics, never unwraps
 
+## Batch operations and groups
+
+Mounts can be tagged with groups in the `[mount]` section (`groups = ["work", "daily"]`). The `start`, `stop`, and `restart` commands accept `--all` and `--group <name>` flags to operate on multiple mounts at once.
+
+Batch operations:
+- Iterate all matching configs and perform the operation on each
+- Skip mounts that are already in the desired state (idempotent)
+- Continue on error — individual failures don't stop the batch
+- Report a summary of failures at the end (non-zero exit if any failed)
+
+The `list` command accepts `--group <name>` to filter output.
+
 ## Design invariants
 
 - **Idempotent**: `start` on already-mounted = info message + success; `stop` on unmounted = info + success

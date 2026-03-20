@@ -179,6 +179,7 @@ mod tests {
                 source: "//fileserver/share".to_string(),
                 target: "/mnt/smb-share".to_string(),
                 scope: MountScope::System,
+                groups: vec![],
             },
             options,
         }
